@@ -72,6 +72,28 @@ The refresh worker (`apps/uploads/services.py`) converts uploads into pandas Dat
 - Backend: `python manage.py test` (unit tests can be expanded), `python manage.py check` for system validation.
 - Frontend: `npm run lint` (Next.js ESLint rules), `npm run dev` for smoke testing.
 
+## Render deployment
+
+`render.yaml` defines a full-stack blueprint:
+
+- **arlingtontx-postgres**: managed Postgres database (render handles credentials).
+- **arlingtontx-backend**: Python web service (`backend/`) that installs dependencies, runs migrations + the seed command in `preDeployCommand`, and starts Gunicorn (`gunicorn config.wsgi:application --bind 0.0.0.0:$PORT`).
+- **arlingtontx-frontend**: Node web service (`frontend/`) that runs `npm run build` / `npm start` for the Next.js dashboard.
+
+Deployment steps:
+
+1. Push this repo to GitHub (already done).
+2. In Render, choose “New +” → “Blueprint” and select the GitHub repo.
+3. During the first deploy:
+   - Provide `NEXT_PUBLIC_MAPBOX_TOKEN` (Render marks it `sync: false`, so you must set it manually).
+   - Optionally adjust `DJANGO_ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS` / `NEXT_PUBLIC_API_BASE_URL` if you rename the services.
+4. Render provisions Postgres, injects the credentials into the backend service, and runs `python manage.py migrate` plus `python manage.py seed_sample_asset --district=east`.
+5. After both services turn green, visit:
+   - Backend health: `https://<backend-service>.onrender.com/api/accounts/districts/`
+   - Frontend UI: `https://<frontend-service>.onrender.com`
+
+Future changes just require `git push`; Render redeploys backend + frontend automatically with the shared database.
+
 ## Next steps
 
 - Wire Celery/Redis if async refresh is needed.

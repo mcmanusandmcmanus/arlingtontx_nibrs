@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: arlingtontx-backend
+    env: python
+    rootDir: backend
+    plan: starter
+    region: oregon
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT
+    preDeployCommand: |
+      python manage.py migrate --noinput && python manage.py seed_sample_asset --district=east || true
+    envVars:
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: arlingtontx-backend.onrender.com
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: POSTGRES_HOST
+        fromDatabase:
+          name: arlingtontx-postgres
+          property: host
+      - key: POSTGRES_PORT
+        fromDatabase:
+          name: arlingtontx-postgres
+          property: port
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: arlingtontx-postgres
+          property: database
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: arlingtontx-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: arlingtontx-postgres
+          property: password
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://arlingtontx-frontend.onrender.com
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://arlingtontx-backend.onrender.com
+
+  - type: web
+    name: arlingtontx-frontend
+    env: node
+    rootDir: frontend
+    plan: starter
+    region: oregon
+    buildCommand: |
+      npm install
+      npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://arlingtontx-backend.onrender.com
+      - key: NEXT_PUBLIC_MAPBOX_TOKEN
+        sync: false
+
+databases:
+  - name: arlingtontx-postgres
+    plan: starter
